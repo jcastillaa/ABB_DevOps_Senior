@@ -1,0 +1,51 @@
+# This first part defines the telegraf service:
+version: "3.3"
+
+services:
+  telegraf:
+    image: telegraf:1.4.0
+    hostname: "{{.Node.ID}}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    configs:
+      - source: telegraf.conf
+        target: /etc/telegraf/telegraf.conf
+    deploy:
+      mode: global
+
+configs:
+  telegraf.conf:
+    file: ./telegraf/telegraf.conf
+
+#This second part defines:
+services:
+  influxdb:
+    image: influxdb:1.3.5-alpine
+    configs:
+      - source: influxdb.conf
+        target: /etc/influxdb/influxdb.conf
+    volumes:
+      - /data/influxdb:/var/lib/influxdb
+    deploy:
+      placement:
+        constraints:
+          - node.labels.influxdb == true
+
+configs:
+  influxdb.conf:
+    file: ./influxdb/influxdb.conf
+
+#This 3 part is about Grafana
+services:
+  grafana:
+    image: grafana/grafana:4.5.2
+    ports:
+      - 3000:3000
+    volumes:
+      - /data/grafana:/var/lib/grafana
+    deploy:
+      placement:
+        constraints:
+          - node.labels.grafana == true
+#This last part, show how to execute connectivity_check.sh, inside Grafana service 
+    command: sh -c "/usr/local/bin/init.sh && exec connectivity_check.sh"
